@@ -1,36 +1,46 @@
 /***************************************************************************//**
-    \file          uds-util.h
+    \file          uds-status.h
     \author        huanghai
     \mail          huanghai@auto-link.com
     \version       0
-    \date          2016-09-28
-    \description   uds service
+    \date          2016-10-10
+    \description   uds status code, include session and Security access
 *******************************************************************************/
-#ifndef	__UDS_UTIL_H_
-#define	__UDS_UTIL_H_
+#ifndef	__UDS_STATUS_H_
+#define	__UDS_STATUS_H_
 /*******************************************************************************
     Include Files
 *******************************************************************************/
 #include <stdint.h>
+#include "uds_type.h"
 
 /*******************************************************************************
     Type Definition
 *******************************************************************************/
+/* SECURITYACCESS */
+#define UNLOCKKEY					0x00000000
+#define UNLOCKSEED					0x00000000
+#define UNDEFINESEED				0xFFFFFFFF
+#define SEEDMASK					0x80000000
+#define SHIFTBIT					1
+#define ALGORITHMASK				0x42303131
+
 
 /*******************************************************************************
     Function  Definition
 *******************************************************************************/
 
-uint8_t
-rand_u8 (void);
-
+/**
+ * uds_security_access - check the key of Security Access
+ *
+ * @key_buf:  recieved key buff
+ * @seed   :  original seed
+ *
+ * returns:
+ *     0 - success， -1 - fail
+ */
 int
-host_to_canl (uint8_t buf[], uint32_t val);
-
-int
-host_to_cans (uint8_t buf[], uint16_t val);
-
-int
-can_to_hostl (uint8_t buf[], uint32_t *pval);
+uds_security_access (uint8_t key_buf[], uint8_t seed_buf[]);
 
 #endif
+/****************EOF****************/

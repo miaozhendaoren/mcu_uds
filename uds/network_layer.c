@@ -2,7 +2,7 @@
     \file          uds-net.c
     \author        huanghai
     \mail          huanghai@auto-link.com
-    \version       0.01
+    \version       0.02
     \date          2016-09-24
     \description   uds network code, base on ISO 15765
 *******************************************************************************/
@@ -17,6 +17,7 @@
     Global Varaibles
 *******************************************************************************/
 static network_layer_st nwl_st = NWL_IDLE;
+
 static bool_t g_wait_cf = FALSE;
 static bool_t g_wait_fc = FALSE;
 
@@ -41,6 +42,10 @@ static uint16_t recv_len = 0;
 static uint16_t recv_fdl = 0;  /* frame data len */
 
 /*******************************************************************************
+    external Varaibles
+*******************************************************************************/
+uint8_t g_tatype;
+/*******************************************************************************
     Function  declaration
 *******************************************************************************/
 static void
@@ -55,7 +60,7 @@ static nt_usdata_t N_USData = {NULL, NULL};
 *******************************************************************************/
 
 /**
- * start_timer_ncr - start N_cr timer
+ * nt_timer_start - start network timer
  *
  * void :
  *
@@ -63,7 +68,7 @@ static nt_usdata_t N_USData = {NULL, NULL};
  *     void
  */
 static void
-nt_timer_start(uint8_t num)
+nt_timer_start (uint8_t num)
 {
 	if (num >= TIMER_CNT) return;
 
@@ -76,7 +81,7 @@ nt_timer_start(uint8_t num)
 }
 
 static void
-nt_timer_start_wv(uint8_t num, uint32_t value)
+nt_timer_start_wv (uint8_t num, uint32_t value)
 {
 	if (num >= TIMER_CNT) return;
 
@@ -89,7 +94,7 @@ nt_timer_start_wv(uint8_t num, uint32_t value)
 }
 
 static void
-nt_timer_stop(uint8_t num)
+nt_timer_stop (uint8_t num)
 {
 	if (num >= TIMER_CNT) return;
 
@@ -97,7 +102,7 @@ nt_timer_stop(uint8_t num)
 }
 
 /**
- * start_timer_ncr - run N_cr timer, should be invoked per 1ms
+ * nt_timer_run - run a network timer, should be invoked per 1ms
  *
  * void :
  *
@@ -105,7 +110,7 @@ nt_timer_stop(uint8_t num)
  *     0 - timer is not running, 1 - timer is running, -1 - a timeout occur
  */
 static int
-nt_timer_run(uint8_t num)
+nt_timer_run (uint8_t num)
 {
 	if (num >= TIMER_CNT) return 0;
 
@@ -128,7 +133,7 @@ nt_timer_run(uint8_t num)
 }
 
 /**
- * check_timer_ncr - check and stop N_cr timer, should be invoked per 1ms
+ * nt_timer_chk - check a network timer and stop it
  *
  * num :
  *
@@ -136,7 +141,7 @@ nt_timer_run(uint8_t num)
  *     0 - timer is not running, 1 - timer is running,
  */
 static int
-nt_timer_chk(uint8_t num)
+nt_timer_chk (uint8_t num)
 {
 	if (num >= TIMER_CNT) return 0;
 
@@ -162,7 +167,7 @@ nt_timer_chk(uint8_t num)
  *     void
  */
 static void
-clear_network(void)
+clear_network (void)
 {
     uint8_t num;
     nwl_st = NWL_IDLE;
@@ -190,7 +195,7 @@ clear_network(void)
  *     void
  */
 static void
-recv_singleframe(uint8_t frame_buf[], uint8_t frame_dlc)
+recv_singleframe (uint8_t frame_buf[], uint8_t frame_dlc)
 {
     uint16_t i, uds_dlc;
 	uint8_t service_id;
@@ -227,7 +232,7 @@ recv_singleframe(uint8_t frame_buf[], uint8_t frame_dlc)
  *     0 - recv a right frame, other - err 
  */
 static int
-recv_firstframe(uint8_t frame_buf[], uint8_t frame_dlc)
+recv_firstframe (uint8_t frame_buf[], uint8_t frame_dlc)
 {
     uint16_t i;
     uint8_t service_id;
@@ -273,6 +278,8 @@ recv_firstframe(uint8_t frame_buf[], uint8_t frame_dlc)
     /* claer the consecutive frane0 sn */
     g_rcf_sn = 0;
 
+    N_USData.ffindication (uds_dlc);
+
     return 1;
 }
 
@@ -287,7 +294,7 @@ recv_firstframe(uint8_t frame_buf[], uint8_t frame_dlc)
  *     0 - recv end, 1 - recv continue, other - err
  */
 static int
-recv_consecutiveframe(uint8_t frame_buf[], uint8_t frame_dlc)
+recv_consecutiveframe (uint8_t frame_buf[], uint8_t frame_dlc)
 {
     uint8_t cf_sn;
 	uint16_t i;
@@ -349,7 +356,7 @@ recv_consecutiveframe(uint8_t frame_buf[], uint8_t frame_dlc)
  *     0 - recv CTS, 1 - recv WT, other - err
  */
 static int
-recv_flowcontrolframe(uint8_t frame_buf[], uint8_t frame_dlc)
+recv_flowcontrolframe (uint8_t frame_buf[], uint8_t frame_dlc)
 {
     uint8_t fc_fs;
 
@@ -537,7 +544,7 @@ send_multipleframe (uint8_t msg_buf[], uint16_t msg_dlc)
 }
 /*******************************************************************************
     Function  Definition - external API
-*******************************************************************************/ 
+*******************************************************************************/
 
 /**
  * network_main - network main task, should be schedule every one ms
@@ -548,7 +555,7 @@ send_multipleframe (uint8_t msg_buf[], uint16_t msg_dlc)
  *     void
  */
 extern void
-network_main(void)
+network_main (void)
 {
     uint8_t send_len;
     if (nt_timer_run (TIMER_N_CR) < 0)
@@ -603,6 +610,7 @@ network_main(void)
 /**
  * netowrk_recv_frame - recieved uds network can frame
  *
+ * @func_addr : 0 - physical addr, 1 - functional addr
  * @frame_buf : uds can frame data buffer
  * @frame_dlc : uds can frame length
  *
@@ -610,7 +618,7 @@ network_main(void)
  *     void
  */
 extern void
-netowrk_recv_frame(uint8_t frame_buf[], uint8_t frame_dlc)
+netowrk_recv_frame (uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc)
 {
 
     uint8_t pci_type; /* protocol control information type */
@@ -622,6 +630,11 @@ netowrk_recv_frame(uint8_t frame_buf[], uint8_t frame_dlc)
      * network layer without any further action
      */
     if(frame_dlc != UDS_VALID_FRAME_LEN) return;
+
+    if (func_addr == 0)
+        g_tatype = N_TATYPE_PHYSICAL;
+    else
+        g_tatype = N_TATYPE_FUNCTIONAL;
 
     pci_type = NT_GET_PCI_TYPE (frame_buf[0]);
     switch(pci_type)
@@ -642,7 +655,7 @@ netowrk_recv_frame(uint8_t frame_buf[], uint8_t frame_dlc)
                 if (nwl_st == NWL_RECV)
                     N_USData.indication (recv_buf, recv_len, N_UNEXP_PDU);
 
-                if (recv_firstframe(frame_buf, frame_dlc) > 0)
+                if (recv_firstframe (frame_buf, frame_dlc) > 0)
                     nwl_st = NWL_RECV;
                 else
                     nwl_st = NWL_IDLE;
@@ -681,7 +694,7 @@ netowrk_recv_frame(uint8_t frame_buf[], uint8_t frame_dlc)
  *     void
  */
 extern void
-netowrk_send_udsmsg(uint8_t msg_buf[], uint16_t msg_dlc)
+netowrk_send_udsmsg (uint8_t msg_buf[], uint16_t msg_dlc)
 {
 
 	if (msg_dlc == 0 || msg_dlc > UDS_FF_DL_MAX) return;
@@ -708,7 +721,7 @@ netowrk_send_udsmsg(uint8_t msg_buf[], uint16_t msg_dlc)
  *     0 - ok, other - err
  */
 extern int
-netowrk_reg_usdata(nt_usdata_t usdata)
+netowrk_reg_usdata (nt_usdata_t usdata)
 {
     if (usdata.indication == NULL || usdata.confirm == NULL) return -1;
 

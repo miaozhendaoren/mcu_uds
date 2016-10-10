@@ -13,39 +13,7 @@
     Include Files
 *******************************************************************************/
 #include <stdint.h>
-
-/*******************************************************************************
-    Type Definition
-*******************************************************************************/
-/**
-	\def TRUE
-	Bool value true.
-*/
-#ifndef TRUE
-#define	TRUE	(1)
-#endif
-
-/**
-	\def FALSE
-	Bool value false.
-*/
-#ifndef FALSE
-#define FALSE	(0)
-#endif
-/**
-	\def NULL
-	NULL type.
-*/
-#ifndef NULL
-#define NULL  ((void *) 0)
-#endif
-/**
-	\typedef unsigned char bool_t
-	Bool type.
-*/
-typedef unsigned char		bool_t;
-
-
+#include "uds_type.h"
 
 typedef enum _N_TATYPE_T_
 {
@@ -68,7 +36,8 @@ typedef enum _N_RESULT_
     N_ERROR
 }n_result_t;
 
-
+typedef void
+(*ffindication_func) (uint16_t msg_dlc);
 typedef void
 (*indication_func) (uint8_t msg_buf[], uint16_t msg_dlc, n_result_t n_result);
 typedef void
@@ -76,9 +45,16 @@ typedef void
 
 typedef struct _NETWORK_USER_DATA_T_
 {
+    ffindication_func ffindication;
     indication_func indication;
     confirm_func    confirm;
 }nt_usdata_t;
+
+/*******************************************************************************
+    external Varaibles
+*******************************************************************************/
+extern uint8_t g_tatype;
+
 /*******************************************************************************
     Function  Definition
 *******************************************************************************/
@@ -98,6 +74,7 @@ network_main(void);
 /**
  * netowrk_recv_frame - recieved uds network can frame
  *
+ * @func_addr : 0 - physical addr, 1 - functional addr
  * @frame_buf : uds can frame data buffer
  * @frame_dlc : uds can frame length
  *
@@ -105,7 +82,7 @@ network_main(void);
  *     void
  */
 extern void
-netowrk_recv_frame(uint8_t frame_buf[], uint8_t frame_dlc);
+netowrk_recv_frame(uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc);
 
 /**
  * netowrk_send_udsmsg - send a uds msg by can

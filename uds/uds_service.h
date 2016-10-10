@@ -11,18 +11,12 @@
 /*******************************************************************************
     Include Files
 *******************************************************************************/
+#include <stdint.h>
 #include "network_layer.h"
 
 /*******************************************************************************
     Type Definition
 *******************************************************************************/
-/* SECURITYACCESS */
-#define UNLOCKKEY					0x00000000
-#define UNLOCKSEED					0x00000000
-#define UNDEFINESEED				0xFFFFFFFF
-#define SEEDMASK					0x80000000
-#define SHIFTBIT					1
-#define ALGORITHMASK				0x4D313231
 
 
 #define UDS_GLOBAL
@@ -76,7 +70,22 @@ typedef enum __UDS_NRC_ENUM__
 #define SID_85        (0x85) /* ControlDTCSetting */
 
 
-#define UDS_GET_SUB_FUNCTION (byte)     (byte & 0x7fu)
+#define SID_10_MIN_LEN      (0x02u)
+#define SID_11_MIN_LEN      (0x02u)
+#define SID_27_MIN_LEN      (0x02u)
+#define SID_28_MIN_LEN      (0x03u)
+#define SID_3E_MIN_LEN      (0x02u)
+#define SID_85_MIN_LEN      (0x02u)
+#define SID_22_MIN_LEN      (0x03u)
+#define SID_2E_MIN_LEN      (0x04u)
+#define SID_14_MIN_LEN      (0x04u) /* 3 Bytes DTC */
+#define SID_19_MIN_LEN      (0x02u)
+#define SID_2F_MIN_LEN      (0x04u)
+#define SID_31_MIN_LEN      (0x04u)
+
+
+#define UDS_GET_SUB_FUNCTION_SUPPRESS_POSRSP(byte)    ((byte >> 7u)&0x01u)
+#define UDS_GET_SUB_FUNCTION(byte)     (byte & 0x7fu)
 
 
 #define POSITIVE_RSP 			0x40
@@ -85,12 +94,13 @@ typedef enum __UDS_NRC_ENUM__
 
 
 
+#define TIMEOUT_FSA          (10000) /* 10s */
+#define TIMEOUT_S3server     (5000)  /* 5000ms */
 /* uds app layer timer */
 typedef enum __UDS_TIMER_T__
 {
 	UDS_TIMER_FSA = 0,
-	UDS_TIMER_N_BS,
-    UDS_TIMER_STmin,
+	UDS_TIMER_S3server,
 	UDS_TIMER_CNT
 }uds_timer_t;
 #define P2_SERVER               (0x32)    /* 50ms */
@@ -174,14 +184,6 @@ typedef enum __UDS_ROUTINE_CTRL_TYPE__
 	UDS_ROUTINE_CTRL_REQUEST_RESULT = 0x03
 }uds_routine_ctrl_type;
 
-/* uds routine state */
-typedef enum __UDS_ROUTINE_STATUS__
-{
-	UDS_ROUTINE_ST_IDLE = 0,
-	UDS_ROUTINE_ST_RUNNING = 0x01,
-	UDS_ROUTINE_ST_SUCCESS = 0x02,
-	UDS_ROUTINE_ST_FAILED = 0x03
-}uds_routine_status;
 
 #define DTC_SUPPORT_STATUS                (0x09)
 #define DTC_GROUP_ALL                     (0xFFFFFF)
@@ -213,6 +215,7 @@ typedef enum __UDS_ROUTINE_STATUS__
 /**
  * uds_get_frame - uds get a can frame, then transmit to network
  *
+ * @func_addr : 0 - physical addr, 1 - functional addr
  * @frame_buf : uds can frame data buffer
  * @frame_dlc : uds can frame length
  *
@@ -220,7 +223,7 @@ typedef enum __UDS_ROUTINE_STATUS__
  *     void
  */
 extern void
-uds_get_frame (uint8_t frame_buf[], uint8_t frame_dlc);
+uds_get_frame (uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc);
 
 /**
  * uds_main - uds main loop, should be schedule every 1 ms

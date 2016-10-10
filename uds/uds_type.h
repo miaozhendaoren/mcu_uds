@@ -1,36 +1,48 @@
 /***************************************************************************//**
-    \file          uds-util.h
+    \file          uds_type.h
     \author        huanghai
     \mail          huanghai@auto-link.com
     \version       0
-    \date          2016-09-28
-    \description   uds service
+    \date          2016-10-09
+    \description   uds type
 *******************************************************************************/
-#ifndef	__UDS_UTIL_H_
-#define	__UDS_UTIL_H_
+#ifndef _UDS_TYPE_H_
+#define _UDS_TYPE_H_
+
 /*******************************************************************************
     Include Files
 *******************************************************************************/
-#include <stdint.h>
 
 /*******************************************************************************
     Type Definition
 *******************************************************************************/
+/**
+	\def TRUE
+	Bool value true.
+*/
+#ifndef TRUE
+#define	TRUE	(1)
+#endif
 
-/*******************************************************************************
-    Function  Definition
-*******************************************************************************/
-
-uint8_t
-rand_u8 (void);
-
-int
-host_to_canl (uint8_t buf[], uint32_t val);
-
-int
-host_to_cans (uint8_t buf[], uint16_t val);
-
-int
-can_to_hostl (uint8_t buf[], uint32_t *pval);
+/**
+	\def FALSE
+	Bool value false.
+*/
+#ifndef FALSE
+#define FALSE	(0)
+#endif
+/**
+	\def NULL
+	NULL type.
+*/
+#ifndef NULL
+#define NULL  ((void *) 0)
+#endif
+/**
+	\typedef unsigned char bool_t
+	Bool type.
+*/
+typedef unsigned char		bool_t;
 
 #endif
+/****************EOF****************/

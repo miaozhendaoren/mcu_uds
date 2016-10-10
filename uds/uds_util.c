@@ -2,7 +2,7 @@
     \file          uds-util.c
     \author        huanghai
     \mail          huanghai@auto-link.com
-    \version       0.04
+    \version       0.00
     \date          2016-09-27
     \description   uds network code, base on ISO 14229
 *******************************************************************************/
@@ -11,6 +11,9 @@
     Include Files
 *******************************************************************************/
 #include <stdint.h>
+#include <stdlib.h>
+#include "ucos_ii.h"
+#include "uds_type.h"
 /*******************************************************************************
     Type Definition
 *******************************************************************************/
@@ -68,7 +71,7 @@ host_to_cans (uint8_t buf[], uint16_t val)
 
 
 /**
- * host_to_cans - transmit  can-net endian buffer to long or short int
+ * can_to_hostl - transmit  can-net endian buffer to long or short int
  *
  * @buf: ther buffer to be transformed
  * @pval: 
@@ -91,3 +94,4 @@ can_to_hostl (uint8_t buf[], uint32_t *pval)
     *pval = val;
 	return 0;
 }
+/****************EOF****************/
