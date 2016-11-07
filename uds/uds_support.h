@@ -58,9 +58,10 @@ typedef struct __UDS_IOCTRL_T__
     uint8_t *p_data;
     uint8_t dlc;
     uint8_t default_value;
-    uint8_t min_value;
-    uint8_t max_value;
     uint8_t step;
+    boot_t  enable;
+    void (* init_iotrol) (void);
+    void (* stop_iotrol) (void);
 }uds_ioctrl_t;
 
 
@@ -84,7 +85,7 @@ typedef struct __UDS_RTCTROL_T__
 }uds_rtctrl_t;
 
 #define RWDATA_CNT  11
-#define IOCTRL_CNT  1
+#define IOCTRL_CNT  5
 #define RTCTRL_CNT  1
 extern const uds_rwdata_t rwdata_list[RWDATA_CNT];
 extern const uds_ioctrl_t ioctrl_list[IOCTRL_CNT];
@@ -102,3 +103,4 @@ extern const uds_rtctrl_t rtctrl_list[RTCTRL_CNT];
 *******************************************************************************/
 
 #endif
+/****************EOF****************/

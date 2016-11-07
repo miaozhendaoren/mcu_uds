@@ -160,18 +160,14 @@ typedef enum __UDS_DTC_SETTING__
 	UDS_DTC_SETTING_OFF
 }uds_dtc_setting;
 
-/* uds DTC group */
-typedef enum __UDS_DTC_GROUP__
-{
-	UDS_DTC_GROUP_EMISSION = 0,
-	UDS_DTC_GROUP_NETWORK = 0xC00000,
-	UDS_DTC_GROUP_ALL = 0xFFFFFF
-}uds_dtc_group;
+
 
 /* uds io control type */
 typedef enum __UDS_IOCTRL_PARAM__
 {
 	UDS_IOCTRL_RETURN_TO_ECU = 0,
+	UDS_IOCTRL_RETSET_TO_DEFAULT = 0x01,
+	UDS_IOCTRL_FREEZE_CURRENT_STATE = 0x02,
 	UDS_IOCTRL_SHORT_ADJUSTMENT = 0x03
 }uds_ioctrl_param;
 
@@ -194,10 +190,6 @@ typedef enum __UDS_ROUTINE_CTRL_TYPE__
 #define REPORT_DTC_EXTENDED_DATA_RECORD_BY_DTC_NUMBER (0x06)
 #define REPORT_SUPPORTED_DTC              (0x0a)
 
-
-#define DTC_FORMAT_15031                  (0x00)
-#define DTC_FORMAT_14229                  (0x01)
-#define DTC_AVAILABILITY_STATUS_MASK      (0x09)
 
 #define UDS_SEED_LENGTH                   (0x04)
 #define UDS_REQUEST_SEED                  (0x01)

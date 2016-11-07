@@ -19,8 +19,27 @@
     Function  declaration
 *******************************************************************************/
 static uint8_t
-uds_rtctrl_nothing (void);
-
+rtctrl_nothing (void);
+static void
+ioctrl_init_backlight (void);
+static void
+ioctrl_stop_backlight (void);
+static void
+ioctrl_init_buzzer (void);
+static void
+ioctrl_stop_buzzer (void);
+static void
+ioctrl_init_gages (void);
+static void
+ioctrl_stop_gages (void);
+static void
+ioctrl_init_display (void);
+static void
+ioctrl_stop_display (void);
+static void
+ioctrl_init_indicator (void);
+static void
+ioctrl_stop_indicator (void);
 /*******************************************************************************
     Global Varaibles
 *******************************************************************************/
@@ -58,28 +77,168 @@ const uds_rwdata_t rwdata_list[RWDATA_CNT] =
     {0xF199, BCD_program_date,     3,  UDS_RWDATA_RDWR_INBOOT, UDS_RWDATA_EEPROM} /* update by tester after program */
 };
 
+
+
+uint8_t backlight_level[2];
+uint8_t buzzer[2];
+uint8_t gages[2];
+uint8_t segment_disp[2];
+uint8_t indicator[6];
+
 const uds_ioctrl_t ioctrl_list[IOCTRL_CNT] = 
 {
-    {0, NULL, 0, 0, 0, 0, 0}
+    {0xF092, backlight_level, 2, 0, 0, 0, &ioctrl_init_backlight, &ioctrl_stop_backlight},
+    {0xF020, buzzer,          2, 0, 0, 0, &ioctrl_init_buzzer,    &ioctrl_stop_buzzer},
+    {0xF021, gages,           2, 0, 0, 0, &ioctrl_init_gages,     &ioctrl_stop_gages},
+    {0xF022, segment_disp,    2, 0, 0, 0, &ioctrl_init_display,   &ioctrl_stop_display},
+    {0xF024, indicator,       6, 0, 0, 0, &ioctrl_init_indicator, &ioctrl_stop_indicator}
 };
 
 const uds_rtctrl_t rtctrl_list[RTCTRL_CNT] =
 {
-    {0, UDS_RT_ST_IDLE, &uds_rtctrl_nothing, &uds_rtctrl_nothing, &uds_rtctrl_nothing}
+    {0, UDS_RT_ST_IDLE, &rtctrl_nothing, &rtctrl_nothing, &rtctrl_nothing}
 };
 
+
+/*******************************************************************************
+    Function  Definition
+*******************************************************************************/
+
 /**
- * uds_rtctrl_nothing - a temp Function
+ * rtctrl_nothing - a temp Function for routine control
  *
- * @void : first frame dlc
+ * @void :
  *
  * returns:
  *     0 - ok
  */
 static uint8_t
-uds_rtctrl_nothing (void)
+rtctrl_nothing (void)
 {
     return 0;
+}
+
+/**
+ * ioctrl_init_backlight - init the backlight control
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+static void
+ioctrl_init_backlight (void)
+{
+    //mcuctrl_set_backlight (backlight_level[0], backlight_level[1]);
+}
+static void
+ioctrl_stop_backlight (void)
+{
+    //mcuctrl_end_backlight ();
+}
+
+/**
+ * ioctrl_init_buzzer - init the buzzer control
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+static void
+ioctrl_init_buzzer (void)
+{
+    //mcuctrl_set_buzzer (buzzer[0], buzzer[1]);
+}
+
+static void
+ioctrl_stop_buzzer (void)
+{
+    //mcuctrl_end_buzzer (buzzer[0], buzzer[1]);
+}
+
+/**
+ * ioctrl_init_gages - init the gages control
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+static void
+ioctrl_init_gages (void)
+{
+    //mcuctrl_set_gages (gages[0], gages[1]);
+}
+
+static void
+ioctrl_stop_gages (void)
+{
+    //mcuctrl_end_gages (gages[0], gages[1]);
+}
+
+/**
+ * ioctrl_init_display - init the segment display control
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+static void
+ioctrl_init_display (void)
+{
+    //mcuctrl_set_display (segment_disp[0], segment_disp[1]);
+}
+
+static void
+ioctrl_stop_display (void)
+{
+    //mcuctrl_end_display (segment_disp[0], segment_disp[1]);
+}
+
+/**
+ * ioctrl_init_indicator- init the indicators control
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+static void
+ioctrl_init_indicator (void)
+{
+    //mcuctrl_set_indicator (indicator);
+}
+
+static void
+ioctrl_stop_indicator (void)
+{
+    //mcuctrl_end_indicator (indicator);
+}
+/**
+ * uds_ioctrl_allstop - main handle of io control
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+void
+uds_ioctrl_allstop (void)
+{
+    uint16_t did_n;
+
+    for (did_n = 0; did_n < IOCTRL_NUM; did_n++)
+    {
+        if (ioctrl_list[did_n].enable == TRUE)
+        {
+            /* need to mutex with 2F service UDS_IOCTRL_RETURN_TO_ECU */
+            ioctrl_list[did_n].enable = FALSE;
+            if (ioctrl_list[did_n].stop_iotrol != NULL)
+                ioctrl_list[did_n].stop_iotrol ();
+        }
+    }
 }
 
 /****************EOF****************/
