@@ -72,7 +72,7 @@ extern void
 network_main(void);
 
 /**
- * netowrk_recv_frame - recieved uds network can frame
+ * network_recv_frame - recieved uds network can frame
  *
  * @func_addr : 0 - physical addr, 1 - functional addr
  * @frame_buf : uds can frame data buffer
@@ -82,10 +82,10 @@ network_main(void);
  *     void
  */
 extern void
-netowrk_recv_frame(uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc);
+network_recv_frame(uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc);
 
 /**
- * netowrk_send_udsmsg - send a uds msg by can
+ * network_send_udsmsg - send a uds msg by can
  *
  * @msg_buf : uds msg data buffer
  * @msg_dlc : uds msg length
@@ -94,11 +94,11 @@ netowrk_recv_frame(uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc);
  *     void
  */
 extern void
-netowrk_send_udsmsg(uint8_t msg_buf[], uint16_t msg_dlc);
+network_send_udsmsg(uint8_t msg_buf[], uint16_t msg_dlc);
 
 
 /**
- * netowrk_reg_usdata - reg usdata Function
+ * network_reg_usdata - reg usdata Function
  *
  * @usdata : uds msg data Function struct
  *
@@ -106,6 +106,6 @@ netowrk_send_udsmsg(uint8_t msg_buf[], uint16_t msg_dlc);
  *     0 - ok, other - err
  */
 extern int
-netowrk_reg_usdata(nt_usdata_t usdata);
+network_reg_usdata(nt_usdata_t usdata);
 #endif
 /****************EOF****************/

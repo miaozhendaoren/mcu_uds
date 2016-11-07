@@ -12,7 +12,7 @@
     Include Files
 *******************************************************************************/
 #include <stdint.h>
-
+#include "uds_type.h"
 /*******************************************************************************
     Type Definition
 *******************************************************************************/
@@ -59,9 +59,9 @@ typedef struct __UDS_IOCTRL_T__
     uint8_t dlc;
     uint8_t default_value;
     uint8_t step;
-    boot_t  enable;
-    void (* init_iotrol) (void);
-    void (* stop_iotrol) (void);
+    bool_t  enable;
+    void (* init_ioctrl) (void);
+    void (* stop_ioctrl) (void);
 }uds_ioctrl_t;
 
 
@@ -88,7 +88,7 @@ typedef struct __UDS_RTCTROL_T__
 #define IOCTRL_CNT  5
 #define RTCTRL_CNT  1
 extern const uds_rwdata_t rwdata_list[RWDATA_CNT];
-extern const uds_ioctrl_t ioctrl_list[IOCTRL_CNT];
+extern uds_ioctrl_t ioctrl_list[IOCTRL_CNT];
 extern const uds_rtctrl_t rtctrl_list[RTCTRL_CNT];
 
 
@@ -101,6 +101,26 @@ extern const uds_rtctrl_t rtctrl_list[RTCTRL_CNT];
 /*******************************************************************************
     Function  Definition
 *******************************************************************************/
+/**
+ * uds_ioctrl_allstop - main handle of io control
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+void
+uds_ioctrl_allstop (void);
 
+/**
+ * uds_load_rwdata - load read / write data from eeprom to ram
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+void
+uds_load_rwdata (void);
 #endif
 /****************EOF****************/

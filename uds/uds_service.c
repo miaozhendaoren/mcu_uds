@@ -13,7 +13,7 @@
 #include "network_layer.h"
 #include "uds_service.h"
 #include "uds_util.h"
-#include “uds_status.h”
+#include "uds_status.h"
 #include "uds_support.h"
 #include "obd_dtc.h"
 /*******************************************************************************
@@ -84,10 +84,10 @@ static const uds_service_t uds_service_list[] =
     {SID_11, SID_11_MIN_LEN, uds_service_11, FALSE, TRUE, TRUE,  TRUE,  UDS_SA_NON},
     {SID_27, SID_27_MIN_LEN, uds_service_27, FALSE, TRUE, FALSE, FALSE, UDS_SA_NON},
     {SID_28, SID_28_MIN_LEN, uds_service_28, FALSE, TRUE, TRUE,  TRUE,  UDS_SA_NON},
-    {SID_3E, SID_3E_MIN_LEN, uds_service_3E, TRUE,  TRUE, TRUE,  TRUE,  UDS_SA_LV1},
+    {SID_3E, SID_3E_MIN_LEN, uds_service_3E, TRUE,  TRUE, TRUE,  TRUE,  UDS_SA_NON},
     {SID_85, SID_85_MIN_LEN, uds_service_85, FALSE, TRUE, TRUE,  TRUE,  UDS_SA_NON},
     {SID_22, SID_22_MIN_LEN, uds_service_22, TRUE,  TRUE, TRUE,  FALSE, UDS_SA_NON},
-    {SID_2E, SID_2E_MIN_LEN, uds_service_2E, FALSE, TRUE, FALSE, FALSE, UDS_SA_NON},
+    {SID_2E, SID_2E_MIN_LEN, uds_service_2E, FALSE, TRUE, FALSE, FALSE, UDS_SA_LV1},
     {SID_14, SID_14_MIN_LEN, uds_service_14, TRUE,  TRUE, TRUE,  FALSE, UDS_SA_NON},
     {SID_19, SID_19_MIN_LEN, uds_service_19, TRUE,  TRUE, TRUE,  FALSE, UDS_SA_NON},
     {SID_2F, SID_2F_MIN_LEN, uds_service_2F, FALSE, TRUE, FALSE, FALSE, UDS_SA_LV1},
@@ -204,6 +204,9 @@ uds_negative_rsp (uint8_t sid, uint8_t rsp_nrc)
 {
 	uint8_t temp_buf[8] = {0};
 
+    if (rsp_nrc != NRC_SERVICE_BUSY)
+        uds_timer_start (UDS_TIMER_S3server);
+
     if (g_tatype == N_TATYPE_FUNCTIONAL)
 	{
 		if (rsp_nrc == NRC_SERVICE_NOT_SUPPORTED ||
@@ -214,7 +217,7 @@ uds_negative_rsp (uint8_t sid, uint8_t rsp_nrc)
 	temp_buf[0] = NEGATIVE_RSP;
 	temp_buf[1] = sid;
 	temp_buf[2] = rsp_nrc;
-	netowrk_send_udsmsg (temp_buf, 3);
+	network_send_udsmsg (temp_buf, 3);
 	return;
 }
 
@@ -230,9 +233,10 @@ uds_negative_rsp (uint8_t sid, uint8_t rsp_nrc)
 static void
 uds_positive_rsp (uint8_t data[], uint16_t len)
 {
+	uds_timer_start (UDS_TIMER_S3server);
 	/* SuppressPosRspMsg is true */
 	if (ssp_flg == TRUE) return;
-	netowrk_send_udsmsg (data, len);
+	network_send_udsmsg (data, len);
     return;
 }
 
@@ -260,19 +264,23 @@ uds_service_10 (uint8_t msg_buf[], uint16_t msg_dlc)
 	uint8_t rsp_buf[8];
 
 	subfunction = UDS_GET_SUB_FUNCTION (msg_buf[1]);
+
+	rsp_buf[0] = USD_GET_POSITIVE_RSP(SID_10);
+	rsp_buf[1] = subfunction;
+	rsp_buf[2] = (uint8_t)(P2_SERVER >> 8);
+	rsp_buf[3] = (uint8_t)(P2_SERVER & 0x00ff);
+	rsp_buf[4] = (uint8_t)(P2X_SERVER >> 8);
+	rsp_buf[5] = (uint8_t)(P2X_SERVER & 0x00ff);
 	switch (subfunction)
 	{
 		case UDS_SESSION_STD:
+			uds_session = (uds_session_t)subfunction;
+			uds_positive_rsp (rsp_buf, 6);
+			break;
 		case UDS_SESSION_EOL:
 			uds_session = (uds_session_t)subfunction;
-			rsp_buf[0] = USD_GET_POSITIVE_RSP(SID_10);
-			rsp_buf[1] = subfunction;
-			rsp_buf[2] = (uint8_t)(P2_SERVER >> 8);
-			rsp_buf[3] = (uint8_t)(P2_SERVER & 0x00ff);
-			rsp_buf[4] = (uint8_t)(P2X_SERVER >> 8);
-			rsp_buf[5] = (uint8_t)(P2X_SERVER & 0x00ff);
 			uds_positive_rsp (rsp_buf, 6);
-
+            uds_timer_start (UDS_TIMER_S3server);
 			break;
 		default:
 			uds_negative_rsp (SID_10,NRC_SUBFUNCTION_NOT_SUPPORTED);
@@ -349,7 +357,7 @@ uds_service_27 (uint8_t msg_buf[], uint16_t msg_dlc)
 				org_seed_buf[i] = rand_u8();
 				rsp_buf[2+i] = org_seed_buf[i];
 			}
-			uds_positive_rsp (rsp_buf,6);
+			uds_positive_rsp (rsp_buf,UDS_SEED_LENGTH+2);
 
 			//printf_os("SecurityAccess seed:%d %d %d %d\r\n",org_seed_buf[0], org_seed_buf[1], org_seed_buf[2], org_seed_buf[3],);
 			break;
@@ -461,6 +469,14 @@ uds_service_3E (uint8_t msg_buf[], uint16_t msg_dlc)
 {
     uint8_t subfunction;
 	uint8_t rsp_buf[8];
+
+   /**
+	* Any TesterPresent (3E hex) request message that is received 
+	* during processing of another request message can be 
+    * ignored by the server
+    */
+	if (uds_timer_chk (UDS_TIMER_S3server) == 0 && uds_session != UDS_SESSION_STD)
+	    return;
 	subfunction = UDS_GET_SUB_FUNCTION (msg_buf[1]);
 	if (subfunction == ZERO_SUBFUNCTION)
 	{
@@ -546,6 +562,7 @@ uds_service_22 (uint8_t msg_buf[], uint16_t msg_dlc)
                 rsp_buf[rsp_len++] = msg_buf[msg_pos];
 				rsp_buf[rsp_len++] = msg_buf[msg_pos+1];
 				memcpy (&rsp_buf[rsp_len], rwdata_list[did_n].p_data, rwdata_list[did_n].dlc);
+				rsp_len += rwdata_list[did_n].dlc;
 			    break;
 			}
 		}
@@ -751,9 +768,9 @@ uds_service_2F (uint8_t msg_buf[], uint16_t msg_dlc)
 
 
     if ((ioctrl_param == UDS_IOCTRL_RETURN_TO_ECU && msg_dlc != 4) ||
-	    (ioctrl_param == UDS_IOCTRL_SHORT_ADJUSTMENT && msg_dlc != (ioctrl_list[did_n].dlc + 4))
+	    (ioctrl_param == UDS_IOCTRL_SHORT_ADJUSTMENT && msg_dlc < (2 + 4)))
 	{
-		uds_negative_rsp (SID_2E,NRC_INVALID_MESSAGE_LENGTH_OR_FORMAT);
+		uds_negative_rsp (SID_2F,NRC_INVALID_MESSAGE_LENGTH_OR_FORMAT);
 		return;
 	}
 	find_did = FALSE;
@@ -775,8 +792,8 @@ uds_service_2F (uint8_t msg_buf[], uint16_t msg_dlc)
 			{
 				vali_par = TRUE;
 				ioctrl_list[did_n].enable = FALSE;
-				if (ioctrl_list[did_n].stop_iotrol != NULL)
-				    ioctrl_list[did_n].stop_iotrol ();
+				if (ioctrl_list[did_n].stop_ioctrl != NULL)
+				    ioctrl_list[did_n].stop_ioctrl ();
 				break;
 			}
 			case UDS_IOCTRL_SHORT_ADJUSTMENT:
@@ -784,8 +801,8 @@ uds_service_2F (uint8_t msg_buf[], uint16_t msg_dlc)
 				vali_par = TRUE;
 				memcpy (ioctrl_list[did_n].p_data, &msg_buf[4], rwdata_list[did_n].dlc);
 				ioctrl_list[did_n].enable = TRUE;
-				if (ioctrl_list[did_n].init_iotrol != NULL)
-				    ioctrl_list[did_n].init_iotrol ();
+				if (ioctrl_list[did_n].init_ioctrl != NULL)
+				    ioctrl_list[did_n].init_ioctrl ();
 				break;
 			}
 			default:
@@ -945,6 +962,7 @@ uds_data_indication (uint8_t msg_buf[], uint16_t msg_dlc, n_result_t n_result)
 
     if (n_result != N_OK)
 	{
+		uds_timer_start (UDS_TIMER_S3server);
 	    return;
 	}
 
@@ -1035,7 +1053,7 @@ uds_data_confirm (n_result_t n_result)
 extern void
 uds_get_frame (uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc)
 {
-	netowrk_recv_frame (func_addr, frame_buf, frame_dlc);
+	network_recv_frame (func_addr, frame_buf, frame_dlc);
 }
 
 
@@ -1052,15 +1070,13 @@ uds_main (void)
 {
 	network_main ();
 
-	if (uds_session != UDS_SESSION_STD)
+	if (uds_timer_run (UDS_TIMER_S3server) < 0)
 	{
-		if (uds_timer_run (UDS_TIMER_S3server) < 0)
-		{
-			uds_session = UDS_SESSION_STD;
-			curr_sa = UDS_SA_NON;
-            uds_ioctrl_allstop ();
-		}
+		uds_session = UDS_SESSION_STD;
+		curr_sa = UDS_SA_NON;
+		uds_ioctrl_allstop ();
 	}
+
 
 	if (uds_timer_run (UDS_TIMER_FSA) < 0)
 	{
@@ -1085,11 +1101,13 @@ uds_init (void)
 
 	uds_session = UDS_SESSION_STD;
 
+    uds_load_rwdata ();
+
     usdata.ffindication = uds_dataff_indication;
     usdata.indication = uds_data_indication;
     usdata.confirm = uds_data_confirm;
 
-    return netowrk_reg_usdata (usdata);
+    return network_reg_usdata (usdata);
 }
 
 /****************EOF****************/

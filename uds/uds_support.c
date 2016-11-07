@@ -11,8 +11,6 @@
     Include Files
 *******************************************************************************/
 #include <absacc.h>
-#include <stdint.h>
-#include "uds_type.h"
 #include "uds_support.h"
 
 /*******************************************************************************
@@ -85,7 +83,7 @@ uint8_t gages[2];
 uint8_t segment_disp[2];
 uint8_t indicator[6];
 
-const uds_ioctrl_t ioctrl_list[IOCTRL_CNT] = 
+uds_ioctrl_t ioctrl_list[IOCTRL_CNT] = 
 {
     {0xF092, backlight_level, 2, 0, 0, 0, &ioctrl_init_backlight, &ioctrl_stop_backlight},
     {0xF020, buzzer,          2, 0, 0, 0, &ioctrl_init_buzzer,    &ioctrl_stop_buzzer},
@@ -216,6 +214,11 @@ ioctrl_stop_indicator (void)
 {
     //mcuctrl_end_indicator (indicator);
 }
+
+/*******************************************************************************
+    Function  Definition - extern to uds
+*******************************************************************************/
+
 /**
  * uds_ioctrl_allstop - main handle of io control
  *
@@ -235,10 +238,24 @@ uds_ioctrl_allstop (void)
         {
             /* need to mutex with 2F service UDS_IOCTRL_RETURN_TO_ECU */
             ioctrl_list[did_n].enable = FALSE;
-            if (ioctrl_list[did_n].stop_iotrol != NULL)
-                ioctrl_list[did_n].stop_iotrol ();
+            if (ioctrl_list[did_n].stop_ioctrl != NULL)
+                ioctrl_list[did_n].stop_ioctrl ();
         }
     }
 }
 
+
+/**
+ * uds_load_rwdata - load read / write data from eeprom to ram
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+void
+uds_load_rwdata (void)
+{
+    memset (ASC_ecu_part_num, 0x55, (15+3+10+17+10+3));
+}
 /****************EOF****************/

@@ -55,6 +55,8 @@ static obd_dtc_para_t obd_dtc_para[OBD_DTC_CNT]=
 static obd_dtc_data_t obd_dtc_data[OBD_DTC_CNT];
 
 
+static bool_t dtc_off;
+static bool_t dtc_off_ex_bat;
 /*******************************************************************************
     Function  Definition
 *******************************************************************************/
@@ -100,9 +102,9 @@ obd_dtc_start_opcycle (uint16_t dtc_n)
 {
     if (dtc_n >= OBD_DTC_CNT) return;
 
-    obd_dtc_data[dtc_n].dtc_st.test_fail = 0;
-    obd_dtc_data[dtc_n].dtc_st.test_fail_toc = 0;
-    obd_dtc_data[dtc_n].dtc_st.test_ncmp_toc = 1;
+    obd_dtc_data[dtc_n].dtc_st.bit.test_fail = 0;
+    obd_dtc_data[dtc_n].dtc_st.bit.test_fail_toc = 0;
+    obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_toc = 1;
 
     obd_dtc_data[dtc_n].afl_cnt = 0;
 }
@@ -137,11 +139,11 @@ obd_dtc_update_data (uint16_t dtc_n, obd_dtc_test_t test_result)
                 obd_dtc_data[dtc_n].afl_cnt+=2;
             if (obd_dtc_data[dtc_n].afl_cnt >= 127)
             {
-                obd_dtc_data[dtc_n].dtc_st.test_fail = 1;
-                obd_dtc_data[dtc_n].dtc_st.test_fail_toc = 1;
-                obd_dtc_data[dtc_n].dtc_st.pending = 1;
-                obd_dtc_data[dtc_n].dtc_st.confirmed = 1;
-                obd_dtc_data[dtc_n].dtc_st.test_fail_slc = 1;
+                obd_dtc_data[dtc_n].dtc_st.bit.test_fail = 1;
+                obd_dtc_data[dtc_n].dtc_st.bit.test_fail_toc = 1;
+                obd_dtc_data[dtc_n].dtc_st.bit.pending = 1;
+                obd_dtc_data[dtc_n].dtc_st.bit.confirmed = 1;
+                obd_dtc_data[dtc_n].dtc_st.bit.test_fail_slc = 1;
             }
         }
     }
@@ -153,10 +155,11 @@ obd_dtc_update_data (uint16_t dtc_n, obd_dtc_test_t test_result)
 
             if (obd_dtc_data[dtc_n].afl_cnt <= -128)
             {
-                obd_dtc_data[dtc_n].dtc_st.test_fail = 0;
-                obd_dtc_data[dtc_n].dtc_st.test_ncmp_toc = 0;
-                obd_dtc_data[dtc_n].dtc_st.test_ncmp_slc = 0;
+                obd_dtc_data[dtc_n].dtc_st.bit.test_fail = 0;
+                obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_toc = 0;
+                obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_slc = 0;
             }
+        }
     }
 }
 
@@ -247,8 +250,8 @@ get_supported_dtc (uint8_t dtc_buf[], uint16_t buf_len)
     dtc_dlc = 0;
     for (dtc_n = 0; dtc_n < OBD_DTC_CNT; dtc_n++)
     {
-        dtc_st = obd_dtc_data[dtc_n].dtc_st.all;
-
+        //dtc_st = obd_dtc_data[dtc_n].dtc_st.all;
+        dtc_st = 0x09;
         if ((dtc_dlc + 4) <= buf_len)
         {
             dtc_buf[dtc_dlc++] = (uint8_t)(obd_dtc_para[dtc_n].dtc_code >> 16);
@@ -296,10 +299,11 @@ clear_dtc_by_group (uint32_t group)
     case UDS_DTC_GROUP_ALL:
         for (dtc_n = 0; dtc_n < OBD_DTC_CNT; dtc_n++)
         {
-                obd_dtc_clear_data (dtc_n);
+            obd_dtc_clear_data (dtc_n);
         }
         break;
     default:
         break;
     }
 }
+/****************EOF****************/

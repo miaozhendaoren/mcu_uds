@@ -41,6 +41,8 @@ static uint8_t recv_buf[UDS_FF_DL_MAX];
 static uint16_t recv_len = 0;
 static uint16_t recv_fdl = 0;  /* frame data len */
 
+
+OS_EVENT *UdsMutex;
 /*******************************************************************************
     external Varaibles
 *******************************************************************************/
@@ -54,7 +56,7 @@ send_flowcontrol (uint8_t flow_st);
 //static indication_func uds_indication = NULL;
 //static confirm_func uds_confirm = NULL;
 
-static nt_usdata_t N_USData = {NULL, NULL};
+static nt_usdata_t N_USData = {NULL, NULL, NULL};
 /*******************************************************************************
     Function  Definition - common
 *******************************************************************************/
@@ -533,7 +535,7 @@ send_multipleframe (uint8_t msg_buf[], uint16_t msg_dlc)
 
 	if (msg_dlc < UDS_FF_DL_MIN || msg_dlc > UDS_FF_DL_MAX) return;
 
-    for (i = 0; i < UDS_FF_DL_MAX; i++)
+    for (i = 0; i < msg_dlc; i++)
 	    remain_buf[i] = msg_buf[i];
 
     g_xcf_sn = 0;
@@ -558,6 +560,7 @@ extern void
 network_main (void)
 {
     uint8_t send_len;
+    uint8_t err;
     if (nt_timer_run (TIMER_N_CR) < 0)
     {
         clear_network ();
@@ -574,6 +577,7 @@ network_main (void)
         g_xcf_sn++;
 		if (g_xcf_sn > 0x0f)
 		    g_xcf_sn = 0;
+        OSMutexPend(UdsMutex,0,&err);
 		send_len = send_consecutiveframe (&remain_buf[remain_pos], remain_len, g_xcf_sn);
 		remain_pos += send_len;
 		remain_len -= send_len;
@@ -605,10 +609,11 @@ network_main (void)
         {
             clear_network ();
         }
+        OSMutexPost(UdsMutex);
 	}
 }
 /**
- * netowrk_recv_frame - recieved uds network can frame
+ * network_recv_frame - recieved uds network can frame
  *
  * @func_addr : 0 - physical addr, 1 - functional addr
  * @frame_buf : uds can frame data buffer
@@ -618,9 +623,9 @@ network_main (void)
  *     void
  */
 extern void
-netowrk_recv_frame (uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc)
+network_recv_frame (uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc)
 {
-
+    uint8_t err;
     uint8_t pci_type; /* protocol control information type */
 
 
@@ -636,6 +641,7 @@ netowrk_recv_frame (uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc)
     else
         g_tatype = N_TATYPE_FUNCTIONAL;
 
+    OSMutexPend(UdsMutex,0,&err);
     pci_type = NT_GET_PCI_TYPE (frame_buf[0]);
     switch(pci_type)
     {
@@ -682,10 +688,11 @@ netowrk_recv_frame (uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc)
         default:
             break;
     }
+    OSMutexPost(UdsMutex);
 }
 
 /**
- * netowrk_send_udsmsg - send a uds msg by can
+ * network_send_udsmsg - send a uds msg by can
  *
  * @msg_buf : uds msg data buffer
  * @msg_dlc : uds msg length
@@ -694,12 +701,10 @@ netowrk_recv_frame (uint8_t func_addr, uint8_t frame_buf[], uint8_t frame_dlc)
  *     void
  */
 extern void
-netowrk_send_udsmsg (uint8_t msg_buf[], uint16_t msg_dlc)
+network_send_udsmsg (uint8_t msg_buf[], uint16_t msg_dlc)
 {
 
 	if (msg_dlc == 0 || msg_dlc > UDS_FF_DL_MAX) return;
-
-    if (nwl_st != NWL_IDLE) return;
 
 	if (msg_dlc < UDS_SF_DL_MAX)
     {
@@ -713,7 +718,7 @@ netowrk_send_udsmsg (uint8_t msg_buf[], uint16_t msg_dlc)
 }
 
 /**
- * netowrk_reg_usdata - reg usdata Function
+ * network_reg_usdata - reg usdata Function
  *
  * @usdata : uds msg data Function struct
  *
@@ -721,11 +726,14 @@ netowrk_send_udsmsg (uint8_t msg_buf[], uint16_t msg_dlc)
  *     0 - ok, other - err
  */
 extern int
-netowrk_reg_usdata (nt_usdata_t usdata)
+network_reg_usdata (nt_usdata_t usdata)
 {
-    if (usdata.indication == NULL || usdata.confirm == NULL) return -1;
+    uint8_t err;
+    if (usdata.ffindication == NULL || usdata.indication == NULL || usdata.confirm == NULL) return -1;
 
     N_USData = usdata;
+
+    UdsMutex = OSMutexCreate(5, &err);
     return 0;
 }
 /****************EOF****************/
