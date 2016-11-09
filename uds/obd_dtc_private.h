@@ -70,9 +70,12 @@ typedef struct __OBD_DTC_DATA_T__
 
     dtc_status_t dtc_st;
     uint8_t      fec_cnt;
-    int16_t      afl_cnt;        /* FaultDetectionCount */
-    uint8_t      detect_times;
+    int16_t      fdt_cnt;        /* FaultDetectionCount */
+    uint8_t      agn_cnt;        /* DTCAgingCounter */
 }obd_dtc_data_t;
 
+#define FDT_MAX               (127)
+#define FDT_MIN               (-128)
+#define AGN_MAX               40
 #endif
 /****************EOF****************/

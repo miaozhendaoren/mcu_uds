@@ -60,7 +60,7 @@ static void
 uds_service_31 (uint8_t msg_buf[], uint16_t msg_dlc);
 
 /*******************************************************************************
-    Global Varaibles
+    Private Varaibles
 *******************************************************************************/
 uint8_t uds_session = UDS_SESSION_NONE;
 static uint8_t org_seed_buf[UDS_SEED_LENGTH];
@@ -71,12 +71,10 @@ static uds_sa_lv curr_sa = UDS_SA_NON;
 
 /* uds user layer timer */
 static uint32_t uds_timer[UDS_TIMER_CNT] = {0};
+
 static uint8_t uds_fsa_cnt = 0;
 
-static bool_t dtc_off = FALSE;
 static bool_t ssp_flg;
-static bool_t dis_normal_xmit;
-static bool_t dis_normal_recv;
 
 static const uds_service_t uds_service_list[] =
 {
@@ -96,6 +94,11 @@ static const uds_service_t uds_service_list[] =
 
 #define UDS_SERVICE_NUM (sizeof (uds_service_list) / sizeof (uds_service_t))
 
+/*******************************************************************************
+    Global Varaibles
+*******************************************************************************/
+bool_t dis_normal_xmit;
+bool_t dis_normal_recv;
 /*******************************************************************************
     Function  Definition
 *******************************************************************************/
@@ -509,13 +512,13 @@ uds_service_85 (uint8_t msg_buf[], uint16_t msg_dlc)
 	switch (subfunction)
 	{
 		case UDS_DTC_SETTING_ON:
-		    dtc_off = FALSE;
+		    obd_dtc_ctrl(DTC_ON);
 		    rsp_buf[0] = USD_GET_POSITIVE_RSP(SID_85);
 		    rsp_buf[1] = subfunction;
 		    uds_positive_rsp (rsp_buf,2);
 		    break;
 		case UDS_DTC_SETTING_OFF:
-		    dtc_off = TRUE;
+		    obd_dtc_ctrl(DTC_OFF);
 		    rsp_buf[0] = USD_GET_POSITIVE_RSP(SID_85);
 		    rsp_buf[1] = subfunction;
 		    uds_positive_rsp (rsp_buf,2);

@@ -4,7 +4,7 @@
     \mail          huanghai@auto-link.com
     \version       0
     \date          2016-10-10
-    \description
+    \description   obd dtc code, according SIO 14229(2006) D.2.2
 *******************************************************************************/
 #ifndef	__OBD_DTC_H_
 #define	__OBD_DTC_H_
@@ -25,6 +25,9 @@
 #define DTC_TEST_PASSED     (1u)
 #define DTC_TEST_NORESULT   (0u)
 #define DTC_TEST_FAILED     (-1u)
+
+#define DTC_OFF             (TRUE)
+#define DTC_ON              (FALSE)
 
 /* uds DTC group */
 typedef enum __OBD_DTC_TEST__
@@ -77,6 +80,51 @@ typedef enum __OBD_DTC_NAME_T__
 }obd_dtc_name_t;
 
 
+/*******************************************************************************
+    Function  Definition
+*******************************************************************************/
+/**
+ * obd_dtc_ctrl - set the dtc off flag
+ *
+ * @val : dtc off value, TRUE or FALSE
+ *
+ * returns:
+ *     void
+ */
+void
+obd_dtc_ctrl (bool_t val);
+/**
+ * obd_update_dtc - manage the dtc status bits in a fault test operation cycle
+ *
+ * @dtc_n : dtc index
+ * @test_result : obd fault detect result
+ *
+ * returns:
+ *     void
+ *
+ */
+void
+uds_update_obddtc (uint16_t dtc_n, obd_dtc_test_t test_result);
+/**
+ * uds_load_obddtc - load obd dtc data from eeprom to ram
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+void
+uds_load_obddtc (void);
 
+/**
+ * uds_save_obddtc - save obd dtc data to eeprom
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+void
+uds_save_obddtc (void);
 #endif
 /****************EOF****************/

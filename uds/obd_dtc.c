@@ -4,7 +4,7 @@
     \mail          huanghai@auto-link.com
     \version       0.01
     \date          2016-10-10
-    \description   obd code, dtc
+    \description   obd dtc code, according SIO 14229(2006) D.2.2
 *******************************************************************************/
 
 /*******************************************************************************
@@ -60,9 +60,22 @@ static bool_t dtc_off_ex_bat;
 /*******************************************************************************
     Function  Definition
 *******************************************************************************/
+/**
+ * obd_dtc_ctrl - set the dtc off flag
+ *
+ * @val : dtc off value, TRUE or FALSE
+ *
+ * returns:
+ *     void
+ */
+void
+obd_dtc_ctrl (bool_t val)
+{
+    dtc_off = val;
+}
 
 /**
- * obd_dtc_clear_data - clear a obd dtc data
+ * obd_dtc_clear - clear a obd dtc data
  *
  * @dtc_n : dtc index
  *
@@ -70,18 +83,20 @@ static bool_t dtc_off_ex_bat;
  *     void
  */
 static void
-obd_dtc_clear_data (uint16_t dtc_n)
+obd_dtc_clear (uint16_t dtc_n)
 {
     if (dtc_n >= OBD_DTC_CNT) return;
 #ifdef SNAPSHOT
     obd_dtc_data[dtc_n].has_ff = FALSE;
 #endif
     obd_dtc_data[dtc_n].dtc_st.all = 0u;
-    obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_toc = 1;
-    obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_slc = 1;
+    obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_slc = 1;                /*Bit 4*/
+    obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_toc = 1;                /*Bit 6*/
+
 
     obd_dtc_data[dtc_n].fec_cnt = 0;
-    obd_dtc_data[dtc_n].afl_cnt = 0;
+    obd_dtc_data[dtc_n].fdt_cnt = 0;
+    obd_dtc_data[dtc_n].agn_cnt = 0;
 }
 
 
@@ -97,29 +112,43 @@ obd_dtc_clear_data (uint16_t dtc_n)
  * returns:
  *     void
  */
-void
+static void
 obd_dtc_start_opcycle (uint16_t dtc_n)
 {
     if (dtc_n >= OBD_DTC_CNT) return;
 
-    obd_dtc_data[dtc_n].dtc_st.bit.test_fail = 0;
-    obd_dtc_data[dtc_n].dtc_st.bit.test_fail_toc = 0;
-    obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_toc = 1;
+    if (obd_dtc_data[dtc_n].dtc_st.bit.test_fail_toc == 0)
+    {
+        obd_dtc_data[dtc_n].dtc_st.bit.pending = 0;                  /*Bit 2*/
+        
+        if (obd_dtc_data[dtc_n].agn_cnt < AGN_MAX)
+            obd_dtc_data[dtc_n].agn_cnt++;
+        else
+            obd_dtc_data[dtc_n].dtc_st.bit.confirmed = 0;            /*Bit 3*/
+    }
+    else
+    {
+        obd_dtc_data[dtc_n].agn_cnt = 0;
+    }
 
-    obd_dtc_data[dtc_n].afl_cnt = 0;
+    obd_dtc_data[dtc_n].dtc_st.bit.test_fail_toc = 0;                /*Bit 1*/
+    obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_toc = 1;                /*Bit 6*/
+
+    obd_dtc_data[dtc_n].fdt_cnt = 0;
 }
 
 /**
- * obd_dtc_update_data - manage the dtc status bits in a fault test operation cycle
+ * obd_update_dtc - manage the dtc status bits in a fault test operation cycle
  *
  * @dtc_n : dtc index
  * @test_result : obd fault detect result
  *
  * returns:
  *     void
+ *
  */
 void
-obd_dtc_update_data (uint16_t dtc_n, obd_dtc_test_t test_result)
+uds_update_obddtc (uint16_t dtc_n, obd_dtc_test_t test_result)
 {
     if (dtc_off == TRUE) return;
 
@@ -131,38 +160,99 @@ obd_dtc_update_data (uint16_t dtc_n, obd_dtc_test_t test_result)
     if (test_result == OBD_DTC_TEST_FAILED)
     {
 
-        if (obd_dtc_data[dtc_n].afl_cnt < 127)
+        if (obd_dtc_data[dtc_n].fdt_cnt < FDT_MAX)
         {
-            if (obd_dtc_data[dtc_n].afl_cnt < 0)
-                obd_dtc_data[dtc_n].afl_cnt = 0;
+            if (obd_dtc_data[dtc_n].fdt_cnt < 0)
+                obd_dtc_data[dtc_n].fdt_cnt = 1;
             else
-                obd_dtc_data[dtc_n].afl_cnt+=2;
-            if (obd_dtc_data[dtc_n].afl_cnt >= 127)
+                obd_dtc_data[dtc_n].fdt_cnt+=2;
+            if (obd_dtc_data[dtc_n].fdt_cnt >= FDT_MAX)
             {
-                obd_dtc_data[dtc_n].dtc_st.bit.test_fail = 1;
-                obd_dtc_data[dtc_n].dtc_st.bit.test_fail_toc = 1;
-                obd_dtc_data[dtc_n].dtc_st.bit.pending = 1;
-                obd_dtc_data[dtc_n].dtc_st.bit.confirmed = 1;
-                obd_dtc_data[dtc_n].dtc_st.bit.test_fail_slc = 1;
+                obd_dtc_data[dtc_n].dtc_st.bit.test_fail = 1;        /*Bit 0*/
+                obd_dtc_data[dtc_n].dtc_st.bit.test_fail_toc = 1;    /*Bit 1*/
+                obd_dtc_data[dtc_n].dtc_st.bit.pending = 1;          /*Bit 2*/
+                obd_dtc_data[dtc_n].dtc_st.bit.confirmed = 1;        /*Bit 3*/
+                obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_slc = 0;    /*Bit 4*/
+                obd_dtc_data[dtc_n].dtc_st.bit.test_fail_slc = 1;    /*Bit 5*/
+                obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_toc = 0;    /*Bit 6*/
+
             }
         }
     }
     else
     {
-        if (obd_dtc_data[dtc_n].afl_cnt > -128)
+        if (obd_dtc_data[dtc_n].fdt_cnt > FDT_MIN)
         {
-            obd_dtc_data[dtc_n].afl_cnt--;
+            obd_dtc_data[dtc_n].fdt_cnt--;
 
-            if (obd_dtc_data[dtc_n].afl_cnt <= -128)
+            if (obd_dtc_data[dtc_n].fdt_cnt <= FDT_MIN)
             {
-                obd_dtc_data[dtc_n].dtc_st.bit.test_fail = 0;
-                obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_toc = 0;
-                obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_slc = 0;
+                obd_dtc_data[dtc_n].dtc_st.bit.test_fail = 0;        /*Bit 0*/
+                obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_slc = 0;    /*Bit 4*/
+                obd_dtc_data[dtc_n].dtc_st.bit.test_ncmp_toc = 0;    /*Bit 6*/
             }
         }
     }
+
+     /**
+      * Note: 
+      * 1.The difference between Bit3 and Bit5 is Bit3 reset by aging 
+      *   criteria or due to an overflow of the fault memory
+      * 2.The difference between Bit4 and Bit6 is Bit6 set by start of opcycle
+      * 3.Bit2 Pending, according to ISO 14229(2006) D.6 DTCAgingCounter
+      *   example pendingDTC is set to zero after an operation cycle in
+      *   which the test completed and did not fail.
+      */
 }
 
+/**
+ * uds_load_obddtc - load obd dtc data from eeprom to ram
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+void
+uds_load_obddtc (void)
+{
+    uint16_t dtc_n;
+
+    /* Read dtc data from eeprom */
+    //eeprom_read();
+    /* check the data sum */
+    //if (checksum() == FALSE)
+    {
+        /* Dtc data initialization */
+        for (dtc_n = 0; dtc_n < OBD_DTC_CNT; dtc_n++)
+        {
+            obd_dtc_clear(dtc_n);
+        }
+    }
+
+    for (dtc_n = 0; dtc_n < OBD_DTC_CNT; dtc_n++)
+    {
+        obd_dtc_start_opcycle(dtc_n);
+    }
+
+    dtc_off = FALSE;
+    dtc_off_ex_bat = FALSE;
+}
+
+
+/**
+ * uds_save_obddtc - save obd dtc data to eeprom
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+void
+uds_save_obddtc (void)
+{
+
+}
 /*******************************************************************************
     Function  Definition - for uds service 14 hex & 19 hex
 *******************************************************************************/
@@ -286,20 +376,20 @@ clear_dtc_by_group (uint32_t group)
         for (dtc_n = 0; dtc_n < OBD_DTC_CNT; dtc_n++)
         {
             if (obd_dtc_para[dtc_n].dtc_code <= DTCG_EMISSION_END)
-                obd_dtc_clear_data (dtc_n);
+                obd_dtc_clear (dtc_n);
         }
         break;
     case UDS_DTC_GROUP_NETWORK:
         for (dtc_n = 0; dtc_n < OBD_DTC_CNT; dtc_n++)
         {
             if (obd_dtc_para[dtc_n].dtc_code >= DTCG_NETWORK_START && obd_dtc_para[dtc_n].dtc_code <= DTCG_NETWORK_END)
-                obd_dtc_clear_data (dtc_n);
+                obd_dtc_clear (dtc_n);
         }
         break;
     case UDS_DTC_GROUP_ALL:
         for (dtc_n = 0; dtc_n < OBD_DTC_CNT; dtc_n++)
         {
-            obd_dtc_clear_data (dtc_n);
+            obd_dtc_clear (dtc_n);
         }
         break;
     default:

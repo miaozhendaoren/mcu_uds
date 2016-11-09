@@ -258,4 +258,18 @@ uds_load_rwdata (void)
 {
     memset (ASC_ecu_part_num, 0x55, (15+3+10+17+10+3));
 }
+
+/**
+ * uds_save_rwdata - save read / write data from eeprom to ram
+ *
+ * @void : 
+ *
+ * returns:
+ *     void
+ */
+void
+uds_save_rwdata (void)
+{
+    memset (ASC_ecu_part_num, 0x55, (15+3+10+17+10+3));
+}
 /****************EOF****************/
