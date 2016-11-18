@@ -2,7 +2,7 @@
     \file          uds-net.c
     \author        huanghai
     \mail          huanghai@auto-link.com
-    \version       0.02
+    \version       0.03 - CANoe Test Passed
     \date          2016-09-24
     \description   uds network code, base on ISO 15765
 *******************************************************************************/
@@ -259,7 +259,7 @@ recv_firstframe (uint8_t frame_buf[], uint8_t frame_dlc)
      * abort the message reception and send
      * an FC N_PDU with Overflow.
      */
-    if (uds_dlc > UDS_FF_DL_MAX) {
+    if (uds_dlc >= UDS_FF_DL_MAX) {
         send_flowcontrol (FS_OVFLW);
         return -2;
     }
@@ -371,6 +371,13 @@ recv_flowcontrolframe (uint8_t frame_buf[], uint8_t frame_dlc)
      */
     if(nt_timer_chk (TIMER_N_BS) <= 0) return -1;
 
+    /**
+    * Got from CANoe Test:
+    * After the First frame is received the Tester sends a functional
+    * adressed Flow control. ECU must abort sending of the response
+    */
+    if (g_tatype == N_TATYPE_FUNCTIONAL) return -1;
+
     g_wait_fc = FALSE;
     if (fc_fs >= FS_RESERVED) {
         N_USData.confirm (N_INVALID_FS);
@@ -393,7 +400,7 @@ recv_flowcontrolframe (uint8_t frame_buf[], uint8_t frame_dlc)
      */
     g_rfc_bs = frame_buf[1];
 	if (frame_buf[2] <= 0x7f)
-	    g_rfc_stmin = frame_buf[2];
+	    g_rfc_stmin = frame_buf[2]+1;
 	else
 	    g_rfc_stmin = 0x7f; /* 127 ms */
 

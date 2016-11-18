@@ -33,7 +33,7 @@ static obd_dtc_para_t obd_dtc_para[OBD_DTC_CNT]=
     0xC12801,
     0xC12901,
     0xC13101,
-    0xC14000,
+    0xC14100,
     0xC15101,
     0xC16300,
     0xC16900,

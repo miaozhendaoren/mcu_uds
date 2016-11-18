@@ -20,7 +20,7 @@
 
 #define DTC_FORMAT_15031                  (0x00)
 #define DTC_FORMAT_14229                  (0x01)
-#define DTC_AVAILABILITY_STATUS_MASK      (0x09)
+#define DTC_AVAILABILITY_STATUS_MASK      (0x7F)
 
 #define DTC_TEST_PASSED     (1u)
 #define DTC_TEST_NORESULT   (0u)

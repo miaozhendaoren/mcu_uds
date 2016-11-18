@@ -2,7 +2,7 @@
     \file          uds-service.c
     \author        huanghai
     \mail          huanghai@auto-link.com
-    \version       0.02
+    \version       0.03 - CANoe Passed
     \date          2016-09-27
     \description   uds network code, base on ISO 14229
 *******************************************************************************/
@@ -252,6 +252,145 @@ eeprom_write (void)
 }
 
 /**
+ * uds_check_len - check uds request message length
+ *
+ * @msg_buf :
+ * @msg_dlc :
+ *
+ * returns:
+ *     bool
+ */
+static bool_t
+uds_check_len (uint8_t msg_buf[], uint16_t msg_dlc)
+{
+	bool_t result;
+	uint8_t subfunction;
+	uint8_t sid;
+	sid = msg_buf[0];
+
+	if (msg_dlc < 2)
+	    return FALSE;
+
+	subfunction = UDS_GET_SUB_FUNCTION (msg_buf[1]);
+
+	switch (sid)
+	{
+		case SID_10:
+		{
+		    if (msg_dlc == SID_10_MIN_LEN)
+		        result = TRUE;
+		    else
+			    result = FALSE;
+		}
+		break;
+		case SID_11:
+		{
+			if (msg_dlc == SID_11_MIN_LEN)
+		        result = TRUE;
+		    else
+			    result = FALSE;
+		}
+		break;
+		case SID_14:
+		{
+			if (msg_dlc == SID_14_MIN_LEN)
+		        result = TRUE;
+		    else
+			    result = FALSE;
+		}
+		break;
+		case SID_19:
+		{
+		    if ((subfunction == REPORT_DTC_NUMBER_BY_STATUS_MASK && msg_dlc != (SID_19_MIN_LEN+1))
+			 || (subfunction == REPORT_DTC_BY_STATUS_MASK && msg_dlc != (SID_19_MIN_LEN+1))
+			 || (subfunction == REPORT_SUPPORTED_DTC && msg_dlc != SID_19_MIN_LEN))
+			{
+				result = FALSE;
+			}
+			else
+			{
+				result = TRUE;
+			}
+		}
+		break;
+		case SID_22:
+		{
+			if (msg_dlc == SID_22_MIN_LEN)
+		        result = TRUE;
+		    else
+			    result = FALSE;
+		}
+		break;
+		case SID_27:
+		{
+			if ((subfunction == UDS_REQUEST_SEED && msg_dlc != SID_27_MIN_LEN)
+			 || (subfunction == UDS_SEND_KEY && msg_dlc != (SID_27_MIN_LEN+4)))
+
+			{
+				result = FALSE;
+			}
+			else
+			{
+				result = TRUE;
+			}
+		}
+		break;
+		case SID_2E:
+		{
+		    if (msg_dlc > SID_2E_MIN_LEN)
+			    result = TRUE;
+			else
+			    result = FALSE;
+		}
+		break;
+		case SID_2F:
+		{
+			if (msg_dlc > SID_2F_MIN_LEN)
+			    result = TRUE;
+			else
+			    result = FALSE;
+		}
+		break;
+		case SID_28:
+		{
+			if (msg_dlc == SID_28_MIN_LEN)
+		        result = TRUE;
+		    else
+			    result = FALSE;
+		}
+		break;
+		case SID_31:
+		{
+			if (msg_dlc > SID_31_MIN_LEN)
+			    result = TRUE;
+			else
+			    result = FALSE;
+		}
+		break;
+		case SID_3E:
+		{
+			if (msg_dlc == SID_3E_MIN_LEN)
+		        result = TRUE;
+		    else
+			    result = FALSE;
+		}
+		break;
+		case SID_85:
+		{
+			if (msg_dlc == SID_85_MIN_LEN)
+		        result = TRUE;
+		    else
+			    result = FALSE;
+		}
+		break;
+		default:
+		    result = FALSE;
+		break;
+	}
+
+    return result;
+}
+/**
  * uds_service_10 - uds service 0x10, DiagnosticSessionControl
  *
  * @msg_buf :
@@ -277,10 +416,12 @@ uds_service_10 (uint8_t msg_buf[], uint16_t msg_dlc)
 	switch (subfunction)
 	{
 		case UDS_SESSION_STD:
+			curr_sa = UDS_SA_NON;
 			uds_session = (uds_session_t)subfunction;
 			uds_positive_rsp (rsp_buf, 6);
 			break;
 		case UDS_SESSION_EOL:
+			curr_sa = UDS_SA_NON;
 			uds_session = (uds_session_t)subfunction;
 			uds_positive_rsp (rsp_buf, 6);
             uds_timer_start (UDS_TIMER_S3server);
@@ -357,7 +498,10 @@ uds_service_27 (uint8_t msg_buf[], uint16_t msg_dlc)
 			rsp_buf[0] = USD_GET_POSITIVE_RSP (SID_27);
 			rsp_buf[1] = subfunction;
 			for (i = 0; i < UDS_SEED_LENGTH; i++) {
-				org_seed_buf[i] = rand_u8();
+				if (curr_sa == UDS_SA_LV1)
+					org_seed_buf[i] = 0;
+				else
+				    org_seed_buf[i] = rand_u8();
 				rsp_buf[2+i] = org_seed_buf[i];
 			}
 			uds_positive_rsp (rsp_buf,UDS_SEED_LENGTH+2);
@@ -423,7 +567,7 @@ uds_service_28 (uint8_t msg_buf[], uint16_t msg_dlc)
     switch (subfunction)
 	{
 		case UDS_CC_MODE_RX_TX:
-		    if (cc_type == UDS_CC_TYPE_NORMAL)
+		    if (cc_type == UDS_CC_TYPE_NORMAL || cc_type == UDS_CC_TYPE_NM || cc_type == UDS_CC_TYPE_NM_NOR)
 			{
 			    dis_normal_xmit = FALSE;
 				dis_normal_recv = FALSE;
@@ -437,7 +581,7 @@ uds_service_28 (uint8_t msg_buf[], uint16_t msg_dlc)
 			}
 		    break;
 		case UDS_CC_MODE_NO_NO:
-		    if (cc_type == UDS_CC_TYPE_NORMAL)
+		    if (cc_type == UDS_CC_TYPE_NORMAL || cc_type == UDS_CC_TYPE_NM || cc_type == UDS_CC_TYPE_NM_NOR)
 			{
 			    dis_normal_xmit = TRUE;
 				dis_normal_recv = TRUE;
@@ -477,9 +621,10 @@ uds_service_3E (uint8_t msg_buf[], uint16_t msg_dlc)
 	* Any TesterPresent (3E hex) request message that is received 
 	* during processing of another request message can be 
     * ignored by the server
+	* Note,Cant passed canoe test
     */
-	if (uds_timer_chk (UDS_TIMER_S3server) == 0 && uds_session != UDS_SESSION_STD)
-	    return;
+	//if (uds_timer_chk (UDS_TIMER_S3server) == 0 && uds_session != UDS_SESSION_STD)
+	 //  return;
 	subfunction = UDS_GET_SUB_FUNCTION (msg_buf[1]);
 	if (subfunction == ZERO_SUBFUNCTION)
 	{
@@ -726,8 +871,10 @@ uds_service_19 (uint8_t msg_buf[], uint16_t msg_dlc)
 		    break;
 		}
 		case REPORT_DTC_SNOPSHOT_BY_DTC_NUMBER:
+		    uds_negative_rsp (SID_19,NRC_SUBFUNCTION_NOT_SUPPORTED);
 		    break;
 		case REPORT_DTC_EXTENDED_DATA_RECORD_BY_DTC_NUMBER:
+		    uds_negative_rsp (SID_19,NRC_SUBFUNCTION_NOT_SUPPORTED);
 		    break;
 		case REPORT_SUPPORTED_DTC:
 		{
@@ -988,9 +1135,9 @@ uds_data_indication (uint8_t msg_buf[], uint16_t msg_dlc, n_result_t n_result)
 				}
 				else
 				{
-					if (curr_sa >= uds_service_list[i].uds_sa)
+					if (uds_check_len(msg_buf, msg_dlc))
 					{
-                        if (msg_dlc >= uds_service_list[i].uds_min_len)
+                        if (curr_sa >= uds_service_list[i].uds_sa)
 						{
 							if (uds_service_list[i].ssp_spt == TRUE && ssp == 0x01)
 							    ssp_flg = TRUE;
@@ -1000,12 +1147,12 @@ uds_data_indication (uint8_t msg_buf[], uint16_t msg_dlc, n_result_t n_result)
 						}
 						else
 						{
-							uds_negative_rsp (sid, NRC_INVALID_MESSAGE_LENGTH_OR_FORMAT);
+							uds_negative_rsp (sid, NRC_SECURITY_ACCESS_DENIED);
 						}
 					}
 					else
 					{
-						uds_negative_rsp (sid, NRC_SECURITY_ACCESS_DENIED);
+						uds_negative_rsp (sid, NRC_INVALID_MESSAGE_LENGTH_OR_FORMAT);
 					}
 				}
 				    

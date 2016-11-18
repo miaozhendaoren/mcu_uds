@@ -4,7 +4,8 @@
     \mail          huanghai@auto-link.com
     \version       0.01
     \date          2016-10-8
-    \description   uds service spport code, include read/write data and routine control
+    \description   uds service spport code, include read/write data,
+                   io control and routine control
 *******************************************************************************/
 
 /*******************************************************************************
